@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大模型实时训练控制台 V3 - 控制台</title>
+<style>
+/* ======================== CSS Variables & Reset ======================== */
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2235;
+  --bg-card-hover: #1e2a42;
+  --bg-input: #0f172a;
+  --border: #1e3a5f;
+  --border-light: #2a4a6f;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-blue-glow: rgba(59, 130, 246, 0.3);
+  --accent-cyan: #06b6d4;
+  --accent-cyan-glow: rgba(6, 182, 212, 0.2);
+  --accent-green: #10b981;
+  --accent-green-glow: rgba(16, 185, 129, 0.2);
+  --accent-amber: #f59e0b;
+  --accent-amber-glow: rgba(245, 158, 11, 0.2);
+  --accent-red: #ef4444;
+  --accent-red-glow: rgba(239, 68, 68, 0.2);
+  --accent-purple: #8b5cf6;
+  --accent-purple-glow: rgba(139, 92, 246, 0.2);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.4);
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background gradient */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(59,130,246,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(139,92,246,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(6,182,212,0.03) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ======================== Layout ======================== */
+.app-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-brand {
+  padding: 24px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-brand h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.sidebar-brand .brand-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1));
+  color: var(--accent-blue);
+  border-color: rgba(59,130,246,0.2);
+}
+
+.nav-item .nav-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.status-dot.online { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green-glow); }
+.status-dot.offline { background: var(--accent-red); }
+.status-dot.training { background: var(--accent-amber); box-shadow: 0 0 6px var(--accent-amber-glow); animation: pulse 1.5s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  margin-left: 240px;
+  padding: 28px 32px;
+  min-height: 100vh;
+}
+
+/* Page sections */
+.page-section {
+  display: none;
+}
+.page-section.active {
+  display: block;
+}
+
+/* ======================== Header ======================== */
+.page-header {
+  margin-bottom: 28px;
+}
+
+.page-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.page-header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+/* ======================== Cards ======================== */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: var(--transition);
+}
+
+.card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+.card-value.blue { color: var(--accent-blue); }
+.card-value.cyan { color: var(--accent-cyan); }
+.card-value.green { color: var(--accent-green); }
+.card-value.amber { color: var(--accent-amber); }
+.card-value.purple { color: var(--accent-purple); }
+.card-value.red { color: var(--accent-red); }
+
+.card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* ======================== Tables ======================== */
+.table-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 12px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+}
+
+td {
+  padding: 12px 20px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+/* ======================== Badges ======================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.badge-on {
+  background: rgba(16,185,129,0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16,185,129,0.3);
+}
+
+.badge-off {
+  background: rgba(100,116,139,0.15);
+  color: var(--text-muted);
+  border: 1px solid rgba(100,116,139,0.3);
+}
+
+.badge-training {
+  background: rgba(245,158,11,0.15);
+  color: var(--accent-amber);
+  border: 1px solid rgba(245,158,11,0.3);
+}
+
+.badge-error {
+  background: rgba(239,68,68,0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+/* ======================== Buttons ======================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+  color: #fff;
+  box-shadow: 0 2px 12px var(--accent-blue-glow);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--accent-blue-glow);
+}
+
+.btn-primary:active { transform: translateY(0); }
+
+.btn-danger {
+  background: rgba(239,68,68,0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(239,68,68,0.25);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+/* ======================== Toggle Switch ======================== */
+.toggle {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.toggle input { display: none; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(100,116,139,0.3);
+  border-radius: 12px;
+  transition: var(--transition);
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  top: 3px;
+  left: 3px;
+  transition: var(--transition);
+}
+
+.toggle input:checked + .toggle-slider {
+  background: var(--accent-blue);
+}
+
+.toggle input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
+
+/* ======================== Log Panel ======================== */
+.log-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.log-body {
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 12px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.log-body::-webkit-scrollbar { width: 6px; }
+.log-body::-webkit-scrollbar-track { background: transparent; }
+.log-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.log-entry {
+  padding: 2px 0;
+  display: flex;
+  gap: 12px;
+}
+
+.log-time {
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+.log-level {
+  font-weight: 700;
+  min-width: 56px;
+  text-transform: uppercase;
+}
+
+.log-level.INFO { color: var(--accent-cyan); }
+.log-level.WARNING { color: var(--accent-amber); }
+.log-level.ERROR { color: var(--accent-red); }
+.log-level.DEBUG { color: var(--text-muted); }
+
+.log-msg {
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+/* ======================== Form ======================== */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: var(--transition);
+  outline: none;
+  font-family: inherit;
+}
+
+.form-input:focus, .form-textarea:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-glow);
+}
+
+.form-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ======================== Empty State ======================== */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+/* ======================== Toast ======================== */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  animation: slideIn 0.3s ease;
+  box-shadow: var(--shadow);
+}
+
+.toast-success {
+  background: rgba(16,185,129,0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16,185,129,0.3);
+}
+
+.toast-error {
+  background: rgba(239,68,68,0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.toast-info {
+  background: rgba(59,130,246,0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(59,130,246,0.3);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ======================== Config Panel ======================== */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.config-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.config-item-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.config-item-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ======================== Training Progress ======================== */
+.training-banner {
+  background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.05));
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 28px;
+  display: none;
+}
+
+.training-banner.active { display: block; }
+
+.training-banner h3 {
+  color: var(--accent-amber);
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.training-banner p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.training-progress {
+  margin-top: 12px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.training-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-amber), var(--accent-blue));
+  border-radius: 2px;
+  transition: width 0.35s ease;
+  width: 0%;
+}
+
+/* ======================== Data Cards ======================== */
+.data-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  transition: var(--transition);
+}
+
+.data-card:hover {
+  border-color: var(--border-light);
+}
+
+.data-card .dc-instruction {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.data-card .dc-output {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent-blue);
+}
+
+.data-card .dc-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* ======================== Responsive ======================== */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+    overflow: hidden;
+  }
+  .sidebar-brand h1, .sidebar-brand .brand-sub,
+  .nav-item span:not(.nav-icon), .sidebar-footer {
+    display: none;
+  }
+  .sidebar-brand { padding: 16px 12px; text-align: center; }
+  .nav-item { justify-content: center; padding: 10px; }
+  .main-content { margin-left: 60px; padding: 20px 16px; }
+  .card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ======================== Editable settings / modal ======================== */
+.config-item {
+  display: block;
+  min-width: 0;
+}
+.config-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.config-item-label {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+.config-description, .config-effective {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.config-effective strong { color: var(--accent-cyan); }
+.config-input, .source-modal-input, .source-modal-select, .source-modal-textarea {
+  width: 100%;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 11px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.config-input:focus, .source-modal-input:focus, .source-modal-select:focus, .source-modal-textarea:focus {
+  border-color: var(--accent-cyan);
+}
+.config-toggle-line {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.config-actions { display:flex; justify-content:flex-end; gap:10px; margin: 16px 0 22px; }
+.config-warning { color: var(--accent-amber); font-size: 12px; margin-top: 7px; }
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 3000; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: rgba(0,0,0,.62); backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display:flex; }
+.source-modal {
+  width: min(760px, 100%); max-height: min(88vh, 900px); overflow: auto;
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  border-radius: 14px; box-shadow: 0 22px 90px rgba(0,0,0,.45); padding: 24px;
+}
+.source-modal-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:18px; }
+.source-modal-header h3 { font-size:18px; margin:0 0 6px; }
+.source-modal-header p { margin:0; color:var(--text-secondary); font-size:12px; }
+.source-modal-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.source-modal-field { min-width:0; }
+.source-modal-field.full { grid-column:1/-1; }
+.source-modal-field label { display:block; font-size:12px; margin-bottom:7px; color:var(--text-secondary); }
+.source-modal-textarea { min-height:100px; resize:vertical; font-family:'JetBrains Mono',monospace; }
+.source-modal-hint { color:var(--text-muted); font-size:11px; margin-top:5px; line-height:1.5; }
+.source-modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:22px; }
+@media (max-width: 720px) {
+  .source-modal-fields { grid-template-columns:1fr; }
+  .source-modal-field.full { grid-column:auto; }
+  .source-modal { padding:16px; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>大模型实时训练控制台</h1>
+      <div class="brand-sub">V3 Control Panel</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">&#9670;</span>
+        <span>仪表盘</span>
+      </div>
+      <div class="nav-item" data-page="sources">
+        <span class="nav-icon">&#9881;</span>
+        <span>数据源</span>
+      </div>
+      <div class="nav-item" data-page="training">
+        <span class="nav-icon">&#9889;</span>
+        <span>训练控制</span>
+      </div>
+      <div class="nav-item" data-page="adapters">
+        <span class="nav-icon">&#9733;</span>
+        <span>适配器管理</span>
+      </div>
+      <div class="nav-item" data-page="data">
+        <span class="nav-icon">&#9776;</span>
+        <span>数据浏览</span>
+      </div>
+      <div class="nav-item" data-page="add">
+        <span class="nav-icon">&#10010;</span>
+        <span>添加数据</span>
+      </div>
+      <div class="nav-item" data-page="logs">
+        <span class="nav-icon">&#8801;</span>
+        <span>系统日志</span>
+      </div>
+      <div class="nav-item" data-page="config">
+        <span class="nav-icon">&#9881;</span>
+        <span>系统配置</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-dot online" id="sidebarStatusDot"></span>
+      <span id="sidebarStatusText">系统运行中</span>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ========== Dashboard ========== -->
+    <section class="page-section active" id="page-dashboard">
+      <div class="page-header">
+        <h2>仪表盘</h2>
+        <p>系统运行状态一览</p>
+      </div>
+
+      <div class="training-banner" id="trainingBanner">
+        <h3>&#9889; 模型训练中</h3>
+        <p id="trainingBannerText">正在处理数据集，请稍候...</p>
+        <div class="training-progress">
+          <div class="training-progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="card-grid" id="dashboardCards">
+        <div class="card">
+          <div class="card-label">系统状态</div>
+          <div class="card-value green" id="d-status">运行中</div>
+          <div class="card-sub" id="d-uptime">已运行 --</div>
+        </div>
+        <div class="card">
+          <div class="card-label">已采集数据</div>
+          <div class="card-value cyan" id="d-collected">0</div>
+          <div class="card-sub" id="d-raw-files">Raw 文件: 0</div>
+        </div>
+        <div class="card">
+          <div class="card-label">已训练数据</div>
+          <div class="card-value blue" id="d-trained">0</div>
+          <div class="card-sub" id="d-training-runs">训练次数: 0</div>
+        </div>
+        <div class="card">
+          <div class="card-label">适配器数量</div>
+          <div class="card-value purple" id="d-adapters">0</div>
+          <div class="card-sub" id="d-max-adapters">上限: --</div>
+        </div>
+        <div class="card">
+          <div class="card-label">去重哈希</div>
+          <div class="card-value amber" id="d-seen">0</div>
+          <div class="card-sub">已去重条目</div>
+        </div>
+        <div class="card">
+          <div class="card-label">最近错误</div>
+          <div class="card-value" id="d-error" style="font-size:13px;color:var(--text-muted);">无</div>
+          <div class="card-sub" id="d-error-time"></div>
+        </div>
+      </div>
+
+      <!-- Recent logs on dashboard -->
+      <div class="log-panel">
+        <div class="table-header">
+          <h3>最近日志</h3>
+          <button class="btn btn-ghost btn-sm" onclick="loadDashboardLogs()">刷新</button>
+        </div>
+        <div class="log-body" id="dashboardLogs">
+          <div class="empty-state"><p>加载中...</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Data Sources ========== -->
+    <section class="page-section" id="page-sources">
+      <div class="page-header">
+        <h2>数据源管理</h2>
+        <p>管理和配置所有数据采集源</p>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>类型</th>
+              <th>详情</th>
+              <th>轮询间隔</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="sourcesTable">
+            <tr><td colspan="6" class="empty-state"><p>加载中...</p></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== Training ========== -->
+    <section class="page-section" id="page-training">
+      <div class="page-header">
+        <h2>训练控制</h2>
+        <p>手动触发训练并查看训练状态</p>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+        <div class="card">
+          <div class="card-label">当前状态</div>
+          <div id="trainStatus" style="margin-top:8px;">
+            <span class="badge badge-on">空闲</span>
+          </div>
+          <div class="card-sub" id="trainDetail" style="margin-top:12px;">等待触发训练</div>
+        </div>
+        <div class="card">
+          <div class="card-label">训练进度</div>
+          <div style="margin-top:12px;">
+            <div class="training-progress" style="height:6px;">
+              <div class="training-progress-bar" id="trainProgressBar" style="display:none;"></div>
+            </div>
+            <div class="card-sub" id="trainProgressText" style="margin-top:8px;">暂无训练任务</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; display:flex; gap:12px;">
+        <button class="btn btn-primary" id="btnTriggerTraining" onclick="triggerTraining()">
+          &#9889; 触发训练
+        </button>
+        <button class="btn btn-danger" id="btnStopTraining" onclick="stopTraining()" style="display:none;">
+          &#9632; 停止训练
+        </button>
+      </div>
+    </section>
+
+    <!-- ========== Adapters ========== -->
+    <section class="page-section" id="page-adapters">
+      <div class="page-header">
+        <h2>适配器管理</h2>
+        <p>管理已训练的 LoRA 适配器权重</p>
+      </div>
+
+      <div class="table-container">
+        <div class="table-header">
+          <h3>适配器列表</h3>
+          <button class="btn btn-ghost btn-sm" onclick="loadAdapters()">刷新</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>大小</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="adaptersTable">
+            <tr><td colspan="4" class="empty-state"><p>加载中...</p></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== Data Browser ========== -->
+    <section class="page-section" id="page-data">
+      <div class="page-header">
+        <h2>数据浏览</h2>
+        <p>查看已采集的原始训练数据</p>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div style="color:var(--text-secondary); font-size:13px;">
+          共 <strong id="dataTotal" style="color:var(--accent-cyan);">0</strong> 条数据
+        </div>
+        <div style="display:flex; gap:8px;" id="dataPagination"></div>
+      </div>
+
+      <div id="dataCards">
+        <div class="empty-state"><p>加载中...</p></div>
+      </div>
+    </section>
+
+    <!-- ========== Add Data ========== -->
+    <section class="page-section" id="page-add">
+      <div class="page-header">
+        <h2>手动添加数据</h2>
+        <p>直接添加训练数据条目</p>
+      </div>
+
+      <div style="max-width:640px;">
+        <div class="form-group">
+          <label class="form-label">指令 (Instruction)</label>
+          <textarea class="form-textarea" id="addInstruction" placeholder="输入训练指令..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">回答 (Output)</label>
+          <textarea class="form-textarea" id="addOutput" placeholder="输入期望的回答..." style="min-height:140px;"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="addData()">
+          &#10010; 添加数据
+        </button>
+      </div>
+    </section>
+
+    <!-- ========== Logs ========== -->
+    <section class="page-section" id="page-logs">
+      <div class="page-header">
+        <h2>系统日志</h2>
+        <p>实时查看系统运行日志</p>
+      </div>
+
+      <div class="log-panel">
+        <div class="table-header">
+          <h3>运行日志</h3>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="loadFullLogs()">刷新</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleAutoRefresh()" id="btnAutoRefresh">自动刷新: 开</button>
+          </div>
+        </div>
+        <div class="log-body" id="fullLogs" style="max-height:600px;">
+          <div class="empty-state"><p>加载中...</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Config ========== -->
+    <section class="page-section" id="page-config">
+      <div class="page-header">
+        <h2>系统配置</h2>
+        <p>可编辑每个参数的值，并独立启用或停用该配置。停用后回退到启动环境变量/程序默认值。</p>
+      </div>
+      <div class="config-actions">
+        <button class="btn btn-ghost" onclick="loadConfig()">重新加载</button>
+        <button class="btn btn-primary" onclick="saveConfig()">保存系统配置</button>
+      </div>
+      <div class="config-grid" id="configGrid">
+        <div class="empty-state"><p>加载中...</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="modal-overlay" id="sourceModal" role="dialog" aria-modal="true" aria-labelledby="sourceModalTitle" onclick="if(event.target===this) closeSourceModal()">
+  <div class="source-modal">
+    <div class="source-modal-header">
+      <div>
+        <h3 id="sourceModalTitle">配置数据源</h3>
+        <p id="sourceModalSubtitle">修改后保存，配置将持久化到本地文件。</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeSourceModal()" aria-label="关闭">关闭</button>
+    </div>
+    <form id="sourceConfigForm" onsubmit="saveSourceConfig(event)">
+      <div class="source-modal-fields" id="sourceConfigFields"></div>
+      <div class="source-modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeSourceModal()">取消</button>
+        <button type="submit" class="btn btn-primary" id="saveSourceButton">保存数据源</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ======================== API Helpers ========================
+async function api(path, options = {}, retried = false) {
+  try {
+    const headers = Object.assign({}, options.headers || {});
+    const token = sessionStorage.getItem('authToken');
+    if (token) headers['X-Auth-Token'] = token;
+    const resp = await fetch(path, Object.assign({}, options, {headers}));
+    if (resp.status === 401 && !retried) {
+      const entered = prompt('该控制台需要访问令牌（AUTO_TRAINER_TOKEN）：');
+      if (entered) {
+        sessionStorage.setItem('authToken', entered.trim());
+        return api(path, options, true);
+      }
+    }
+    let data = {};
+    try { data = await resp.json(); } catch (_) { /* 非 JSON 响应 */ }
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    return data;
+  } catch (e) {
+    console.error(`API Error [${path}]:`, e);
+    throw e;
+  }
+}
+
+// ======================== Toast ========================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+// ======================== Navigation ========================
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`page-${page}`).classList.add('active');
+    // Load data for the page
+    loadPageData(page);
+  });
+});
+
+function loadPageData(page) {
+  switch(page) {
+    case 'dashboard': loadDashboard(); break;
+    case 'sources': loadSources(); break;
+    case 'training': loadTrainingStatus(); break;
+    case 'adapters': loadAdapters(); break;
+    case 'data': loadData(1); break;
+    case 'logs': loadFullLogs(); break;
+    case 'config': loadConfig(); break;
+  }
+}
+
+// ======================== Dashboard ========================
+async function loadDashboard() {
+  try {
+    const s = await api('/api/status');
+    const dot = document.getElementById('sidebarStatusDot');
+    const txt = document.getElementById('sidebarStatusText');
+
+    if (s.is_training) {
+      document.getElementById('d-status').textContent = '训练中';
+      document.getElementById('d-status').className = 'card-value amber';
+      dot.className = 'status-dot training';
+      txt.textContent = '训练中...';
+    } else if (s.is_running) {
+      document.getElementById('d-status').textContent = '运行中';
+      document.getElementById('d-status').className = 'card-value green';
+      dot.className = 'status-dot online';
+      txt.textContent = '系统运行中';
+    } else {
+      document.getElementById('d-status').textContent = '已停止';
+      document.getElementById('d-status').className = 'card-value red';
+      dot.className = 'status-dot offline';
+      txt.textContent = '已停止';
+    }
+
+    document.getElementById('d-uptime').textContent = `已运行 ${formatUptime(s.uptime_seconds)}`;
+    document.getElementById('d-collected').textContent = s.total_collected.toLocaleString();
+    document.getElementById('d-raw-files').textContent = `Raw 文件: ${s.raw_file_count}`;
+    document.getElementById('d-trained').textContent = s.total_trained.toLocaleString();
+    document.getElementById('d-training-runs').textContent = `训练次数: ${s.total_training_runs}`;
+    document.getElementById('d-adapters').textContent = s.adapter_count;
+    document.getElementById('d-max-adapters').textContent = `上限: ${s.max_adapters}`;
+    document.getElementById('d-seen').textContent = s.seen_hash_count.toLocaleString();
+
+    // Training banner
+    const banner = document.getElementById('trainingBanner');
+    if (s.is_training) {
+      banner.classList.add('active');
+      document.getElementById('trainingBannerText').textContent =
+        `后端: ${s.training_backend === 'studio_mcp' ? 'Unsloth Studio' : '本地 Unsloth'} | 阶段: ${s.training_stage || '训练中'} | ${Number(s.training_progress || 0).toFixed(1)}% | Step ${s.training_step || 0}/${s.training_max_steps || '?'} | Loss: ${s.training_loss == null ? '--' : Number(s.training_loss).toFixed(4)} | 数据集: ${s.training_dataset_size} 条 | 已运行: ${formatElapsed(s.training_elapsed)}`;
+      const dashboardBar = document.querySelector('#trainingBanner .training-progress-bar');
+      if (dashboardBar) dashboardBar.style.width = `${Math.max(0, Math.min(100, Number(s.training_progress || 0)))}%`;
+    } else {
+      banner.classList.remove('active');
+    }
+
+    // Error
+    const errEl = document.getElementById('d-error');
+    const errTime = document.getElementById('d-error-time');
+    if (s.last_error) {
+      errEl.textContent = s.last_error;
+      errEl.style.color = 'var(--accent-red)';
+      errTime.textContent = s.last_error_time || '';
+    } else {
+      errEl.textContent = '无';
+      errEl.style.color = 'var(--text-muted)';
+      errTime.textContent = '';
+    }
+
+    loadDashboardLogs();
+  } catch (e) {
+    showToast('加载仪表盘失败: ' + e.message, 'error');
+  }
+}
+
+async function loadDashboardLogs() {
+  try {
+    const logs = await api('/api/logs?limit=30');
+    renderLogs('dashboardLogs', logs);
+  } catch(e) {}
+}
+
+// ======================== Sources ========================
+let editingSourceId = null;
+
+async function loadSources() {
+  try {
+    const sources = await api('/api/sources');
+    const tbody = document.getElementById('sourcesTable');
+    if (!sources.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>暂无数据源</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = sources.map(s => `
+      <tr>
+        <td style="font-weight:600;">${esc(s.name)}</td>
+        <td><code style="background:var(--bg-input);padding:2px 8px;border-radius:4px;font-size:12px;">${esc(s.type)}</code></td>
+        <td style="color:var(--text-secondary);font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(s.detail || '')}">${esc(s.detail || '')}</td>
+        <td style="color:var(--text-secondary);font-size:12px;">${s.poll_interval || '-'}s</td>
+        <td><span class="badge ${s.enabled ? 'badge-on' : 'badge-off'}">${s.enabled ? '已启用' : '已禁用'}</span></td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-sm" onclick="editSource(${s.id})">配置</button>
+          <label class="toggle" title="${s.enabled ? '点击禁用' : '点击启用'}">
+            <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSource(${s.id})">
+            <div class="toggle-slider"></div>
+          </label>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    showToast('加载数据源失败: ' + e.message, 'error');
+  }
+}
+
+async function toggleSource(id) {
+  try {
+    const result = await api(`/api/sources/${id}/toggle`, { method: 'POST' });
+    showToast(result.enabled ? '数据源已启用' : '数据源已禁用', 'success');
+    await loadSources();
+  } catch(e) {
+    showToast('切换失败: ' + e.message, 'error');
+    await loadSources();
+  }
+}
+
+async function editSource(id) {
+  try {
+    const cfg = await api(`/api/sources/${id}/config`);
+    editingSourceId = id;
+    document.getElementById('sourceModalTitle').textContent = `配置数据源：${cfg.name}`;
+    document.getElementById('sourceModalSubtitle').textContent = `${cfg.type} · ${cfg.enabled ? '当前已启用' : '当前已禁用'} · 修改配置不会自动启用数据源`;
+    const container = document.getElementById('sourceConfigFields');
+    container.innerHTML = cfg.fields.map(field => {
+      const idAttr = `source-field-${field.key}`;
+      const required = field.required ? 'required' : '';
+      const min = field.min != null ? `min="${field.min}"` : '';
+      const max = field.max != null ? `max="${field.max}"` : '';
+      const value = field.value == null ? '' : String(field.value);
+      const full = field.type === 'textarea' || field.type === 'json' ? ' full' : '';
+      const hint = field.description || (field.type === 'json'
+        ? (field.secret ? '填写 JSON 对象。已配置的敏感值会显示为 ********，原样保留即可；输入 __CLEAR__ 可清空对应敏感字段。' : '必须是有效的 JSON 对象，例如：{}。')
+        : (field.secret ? (field.configured ? '已保存敏感值不会回传浏览器。留空保持不变；输入 __CLEAR__ 清空。' : '可以留空；保存的凭据仅保存在本机配置文件中。') : ''));
+      let control = '';
+      if (field.type === 'textarea' || field.type === 'json') {
+        control = `<textarea class="source-modal-textarea" id="${idAttr}" name="${field.key}" ${required} spellcheck="false">${esc(value)}</textarea>`;
+      } else if (field.type === 'select') {
+        control = `<select class="source-modal-select" id="${idAttr}" name="${field.key}" ${required}>${(field.options || []).map(opt => `<option value="${esc(opt)}" ${String(opt) === value ? 'selected' : ''}>${esc(opt)}</option>`).join('')}</select>`;
+      } else {
+        const inputType = field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text';
+        const placeholder = field.secret ? (field.configured ? '留空保持现有值' : '输入凭据（可留空）') : '';
+        control = `<input class="source-modal-input" id="${idAttr}" name="${field.key}" type="${inputType}" value="${esc(value)}" placeholder="${esc(placeholder)}" ${required} ${min} ${max} autocomplete="${field.secret ? 'new-password' : 'off'}">`;
+      }
+      return `<div class="source-modal-field${full}"><label for="${idAttr}">${esc(field.label)}${field.required ? ' *' : ''}</label>${control}${hint ? `<div class="source-modal-hint">${esc(hint)}</div>` : ''}</div>`;
+    }).join('');
+    document.getElementById('sourceModal').classList.add('open');
+    document.getElementById('sourceModal').setAttribute('aria-hidden', 'false');
+    const first = container.querySelector('input,textarea,select');
+    if (first) first.focus();
+  } catch(e) {
+    showToast('读取数据源配置失败：' + e.message, 'error');
+  }
+}
+
+function closeSourceModal() {
+  document.getElementById('sourceModal').classList.remove('open');
+  document.getElementById('sourceModal').setAttribute('aria-hidden', 'true');
+  document.getElementById('sourceConfigFields').innerHTML = '';
+  editingSourceId = null;
+}
+
+async function saveSourceConfig(event) {
+  event.preventDefault();
+  if (editingSourceId == null) return;
+  const button = document.getElementById('saveSourceButton');
+  button.disabled = true;
+  try {
+    const fields = {};
+    document.querySelectorAll('#sourceConfigFields [name]').forEach(input => { fields[input.name] = input.value; });
+    await api(`/api/sources/${editingSourceId}/config`, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fields})
+    });
+    showToast('数据源配置已保存', 'success');
+    closeSourceModal();
+    await loadSources();
+  } catch(e) {
+    showToast('保存数据源配置失败：' + e.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// ======================== Training ========================
+async function loadTrainingStatus() {
+  try {
+    const s = await api('/api/status');
+    const statusEl = document.getElementById('trainStatus');
+    const detailEl = document.getElementById('trainDetail');
+    const bar = document.getElementById('trainProgressBar');
+    const barText = document.getElementById('trainProgressText');
+
+    const stopBtn = document.getElementById('btnStopTraining');
+    if (stopBtn) stopBtn.style.display = s.is_training ? 'inline-flex' : 'none';
+    if (s.is_training) {
+      const label = s.training_status === 'stopping' ? '正在停止' :
+        (['connecting', 'submitting'].includes(s.training_status) ? '连接/提交 Studio' :
+        (s.training_status === 'loading' ? '加载模型' : '训练中'));
+      statusEl.innerHTML = `<span class="badge badge-training">&#9889; ${label}</span>`;
+      const step = Number(s.training_step || 0);
+      const maxSteps = Number(s.training_max_steps || 0);
+      const pct = Number(s.training_progress || 0);
+      detailEl.textContent = `后端: ${s.training_backend === 'studio_mcp' ? 'Unsloth Studio' : '本地 Unsloth'}${s.studio_job_id ? ' | Studio 任务 ID: ' + s.studio_job_id : ''} | 阶段: ${s.training_stage || '训练中'} | 数据集: ${s.training_dataset_size} 条 | 已运行: ${formatElapsed(s.training_elapsed)}`;
+      bar.style.display = 'block';
+      bar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+      barText.textContent = `${pct.toFixed(1)}% (${step}/${maxSteps || '?'}) | Loss: ${s.training_loss == null ? '--' : Number(s.training_loss).toFixed(4)} | LR: ${s.training_learning_rate == null ? '--' : Number(s.training_learning_rate).toExponential(2)}`;
+    } else {
+      const statusLabel = s.training_status === 'completed' ? '训练完成' :
+        s.training_status === 'failed' ? '训练失败' :
+        s.training_status === 'cancelled' ? '已停止' :
+        s.training_status === 'saving' ? '保存适配器' : '空闲';
+      const badgeClass = s.training_status === 'failed' ? 'badge-error' : 'badge-on';
+      statusEl.innerHTML = `<span class="badge ${badgeClass}">${statusLabel}</span>`;
+      bar.style.display = (s.training_status === 'completed' || s.training_status === 'failed' || s.training_status === 'cancelled') ? 'block' : 'none';
+      bar.style.width = `${Math.max(0, Math.min(100, Number(s.training_progress || 0)))}%`;
+      if (s.training_status === 'completed') {
+        detailEl.textContent = `最近任务已完成${s.last_training_time ? '：' + s.last_training_time : ''}`;
+        barText.textContent = `100% (${s.training_step}/${s.training_max_steps || s.training_step}) | 最终 Loss: ${s.training_loss == null ? '--' : Number(s.training_loss).toFixed(4)}`;
+      } else if (s.training_status === 'failed') {
+        detailEl.textContent = '最近训练失败，请查看系统日志和保留的数据集';
+        barText.textContent = `失败于 step ${s.training_step || 0}；数据已保留以便排查`;
+      } else if (s.training_status === 'cancelled') {
+        detailEl.textContent = '训练已停止，部分 adapter 已保存；原始数据已保留';
+        barText.textContent = `${Number(s.training_progress || 0).toFixed(1)}% (${s.training_step || 0}/${s.training_max_steps || '?'}) | 最终 Loss: ${s.training_loss == null ? '--' : Number(s.training_loss).toFixed(4)}`;
+      } else {
+        detailEl.textContent = s.last_training_time ? `上次训练: ${s.last_training_time}` : '等待触发训练';
+        barText.textContent = '暂无训练任务';
+      }
+    }
+
+    if (s.last_error) {
+      detailEl.innerHTML += `<br><span style="color:var(--accent-red);font-size:12px;">最近错误: ${esc(s.last_error)}</span>`;
+    }
+  } catch(e) {
+    showToast('加载训练状态失败: ' + e.message, 'error');
+  }
+}
+
+async function stopTraining() {
+  const btn = document.getElementById('btnStopTraining');
+  if (!confirm('确认请求停止当前训练？停止将在当前训练步结束后生效，原始数据会保留。')) return;
+  btn.disabled = true;
+  try {
+    const result = await api('/api/stop_training', { method: 'POST' });
+    showToast(result.message || '已请求停止训练', 'info');
+    loadTrainingStatus();
+  } catch (e) {
+    showToast('停止训练失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function triggerTraining() {
+  const btn = document.getElementById('btnTriggerTraining');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  try {
+    await api('/api/trigger_training', { method: 'POST' });
+    showToast('训练任务已提交', 'success');
+    setTimeout(loadTrainingStatus, 1000);
+  } catch(e) {
+    showToast('触发训练失败: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#9889; 触发训练';
+  }
+}
+
+// ======================== Adapters ========================
+async function loadAdapters() {
+  try {
+    const adapters = await api('/api/adapters');
+    const tbody = document.getElementById('adaptersTable');
+    if (!adapters.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="empty-icon">&#9733;</div><p>暂无适配器</p></td></tr>';
+      return;
+    }
+    tbody.innerHTML = adapters.map(a => `
+      <tr>
+        <td style="font-weight:500;font-family:monospace;font-size:12px;">${esc(a.name)}</td>
+        <td style="color:var(--text-secondary);">${a.size_mb} MB</td>
+        <td style="color:var(--text-secondary);font-size:12px;">${esc(a.created)}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteAdapter('${esc(a.name)}')">删除</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    showToast('加载适配器失败: ' + e.message, 'error');
+  }
+}
+
+async function deleteAdapter(name) {
+  if (!confirm(`确认删除适配器 ${name}？此操作不可撤销。`)) return;
+  try {
+    await api(`/api/adapters/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    showToast(`已删除 ${name}`, 'success');
+    loadAdapters();
+  } catch(e) {
+    showToast('删除失败: ' + e.message, 'error');
+  }
+}
+
+// ======================== Data Browser ========================
+let currentPage = 1;
+async function loadData(page) {
+  currentPage = page;
+  try {
+    const data = await api(`/api/data?page=${page}&per_page=15`);
+    document.getElementById('dataTotal').textContent = data.total;
+
+    const container = document.getElementById('dataCards');
+    if (!data.items.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#9776;</div><p>暂无数据</p></div>';
+      return;
+    }
+
+    container.innerHTML = data.items.map(item => `
+      <div class="data-card">
+        <div class="dc-instruction">${esc(item.instruction || '')}</div>
+        <div class="dc-output">${esc(item.output || '')}</div>
+        <div class="dc-meta">${esc(item._file || '')}</div>
+      </div>
+    `).join('');
+
+    // Pagination
+    const pag = document.getElementById('dataPagination');
+    if (data.total_pages > 1) {
+      let html = '';
+      if (page > 1) html += `<button class="btn btn-ghost btn-sm" onclick="loadData(${page-1})">上一页</button>`;
+      html += `<span style="color:var(--text-muted);font-size:12px;line-height:32px;">${page} / ${data.total_pages}</span>`;
+      if (page < data.total_pages) html += `<button class="btn btn-ghost btn-sm" onclick="loadData(${page+1})">下一页</button>`;
+      pag.innerHTML = html;
+    } else {
+      pag.innerHTML = '';
+    }
+  } catch(e) {
+    showToast('加载数据失败: ' + e.message, 'error');
+  }
+}
+
+// ======================== Add Data ========================
+async function addData() {
+  const instruction = document.getElementById('addInstruction').value.trim();
+  const output = document.getElementById('addOutput').value.trim();
+
+  if (!instruction || !output) {
+    showToast('指令和回答均不能为空', 'error');
+    return;
+  }
+
+  try {
+    await api('/api/data/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instruction, output }),
+    });
+    showToast('数据添加成功', 'success');
+    document.getElementById('addInstruction').value = '';
+    document.getElementById('addOutput').value = '';
+  } catch(e) {
+    showToast('添加失败: ' + e.message, 'error');
+  }
+}
+
+// ======================== Logs ========================
+let autoRefreshOn = true;
+
+function renderLogs(containerId, logs) {
+  const container = document.getElementById(containerId);
+  if (!logs.length) {
+    container.innerHTML = '<div class="empty-state"><p>暂无日志</p></div>';
+    return;
+  }
+  container.innerHTML = logs.map(l => `
+    <div class="log-entry">
+      <span class="log-time">${esc(l.time)}</span>
+      <span class="log-level ${l.level}">${l.level.substring(0,4)}</span>
+      <span class="log-msg">${esc(l.message)}</span>
+    </div>
+  `).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+async function loadFullLogs() {
+  try {
+    const logs = await api('/api/logs?limit=200');
+    renderLogs('fullLogs', logs);
+  } catch(e) {}
+}
+
+function toggleAutoRefresh() {
+  autoRefreshOn = !autoRefreshOn;
+  document.getElementById('btnAutoRefresh').textContent = `自动刷新: ${autoRefreshOn ? '开' : '关'}`;
+}
+
+// ======================== Config ========================
+async function loadConfig() {
+  try {
+    const cfg = await api('/api/config');
+    const grid = document.getElementById('configGrid');
+    grid.innerHTML = (cfg.settings || []).map(item => {
+      const id = `setting-${item.key}`;
+      let control;
+      if (item.type === 'select') {
+        control = `<select class="config-input" id="${id}" name="${item.key}">${(item.options || []).map(opt => `<option value="${esc(opt)}" ${String(opt) === String(item.value) ? 'selected' : ''}>${esc(opt)}</option>`).join('')}</select>`;
+      } else {
+        control = `<input class="config-input" id="${id}" name="${item.key}" type="${item.type === 'number' ? 'number' : 'text'}" value="${esc(String(item.value ?? ''))}" ${item.min != null ? `min="${item.min}"` : ''} ${item.max != null ? `max="${item.max}"` : ''} ${item.type === 'number' ? 'step="1"' : ''}>`;
+      }
+      const active = item.enabled ? '启用中' : '已停用（使用默认值）';
+      const effective = item.pending_restart ? '重启后生效' : String(item.effective_value ?? '');
+      return `<div class="config-item" data-setting-key="${esc(item.key)}">
+        <div class="config-item-head">
+          <div><div class="config-item-label">${esc(item.label)}</div><div class="config-description">${esc(item.description || '')}</div></div>
+          <label class="config-toggle-line"><input class="config-enabled" type="checkbox" data-key="${esc(item.key)}" ${item.enabled ? 'checked' : ''}><span>${active}</span></label>
+        </div>
+        ${control}
+        <div class="config-effective">当前生效值：<strong>${esc(effective)}</strong></div>
+        <div class="config-effective">关闭时回退值：${esc(String(item.default_value ?? ''))}</div>
+        ${item.restart_required ? `<div class="config-warning">${item.pending_restart ? '待重启：保存值与当前运行值不同，重启后应用。' : '此项修改后需要重启服务才会生效。'}</div>` : ''}
+      </div>`;
+    }).join('');
+    grid.querySelectorAll('.config-enabled').forEach(toggle => {
+      toggle.addEventListener('change', () => {
+        const label = toggle.closest('.config-toggle-line').querySelector('span');
+        label.textContent = toggle.checked ? '启用中' : '已停用（使用默认值）';
+      });
+    });
+  } catch(e) {
+    showToast('加载配置失败: ' + e.message, 'error');
+  }
+}
+
+async function saveConfig() {
+  const settings = {};
+  document.querySelectorAll('#configGrid [data-setting-key]').forEach(card => {
+    const key = card.dataset.settingKey;
+    const input = card.querySelector(`[name="${CSS.escape(key)}"]`);
+    const toggle = card.querySelector('.config-enabled');
+    if (input && toggle) settings[key] = {value: input.value, enabled: toggle.checked};
+  });
+  const button = document.querySelector('#page-config .btn-primary');
+  if (button) button.disabled = true;
+  try {
+    const result = await api('/api/config', {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({settings})});
+    showToast(result.message || '系统配置已保存', 'success');
+    await loadConfig();
+  } catch(e) {
+    showToast('保存系统配置失败：' + e.message, 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+// ======================== Utilities ========================
+function formatUptime(sec) {
+  if (!sec && sec !== 0) return '--';
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d}天 ${h}小时 ${m}分`;
+  if (h > 0) return `${h}小时 ${m}分`;
+  return `${m}分钟`;
+}
+
+function formatElapsed(sec) {
+  if (!sec && sec !== 0) return '--';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}分${s}秒`;
+}
+
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  // HTML text 和 attribute 都会使用此 helper；额外转义引号避免配置值打破属性边界。
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ======================== Auto Refresh ========================
+setInterval(() => {
+  if (!autoRefreshOn) return;
+  const activePage = document.querySelector('.page-section.active');
+  if (activePage && activePage.id === 'page-dashboard') loadDashboard();
+  if (activePage && activePage.id === 'page-logs') loadFullLogs();
+  if (activePage && activePage.id === 'page-training') loadTrainingStatus();
+}, 5000);
+
+// ======================== Init ========================
+loadDashboard();
+</script>
+</body>
+</html>

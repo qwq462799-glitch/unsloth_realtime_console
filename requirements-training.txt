@@ -1,0 +1,11 @@
+# Install only inside a compatible PyTorch/CUDA environment.
+# Unsloth's recommended torch/transformers/trl versions vary by OS, CUDA and GPU.
+# Install Unsloth using its current official installation instructions first,
+# then install/align these packages with the versions recommended by that install.
+unsloth
+datasets
+trl
+transformers
+accelerate
+peft
+bitsandbytes

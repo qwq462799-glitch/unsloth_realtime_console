@@ -1,0 +1,3 @@
+# Optional client for Unsloth Studio's documented MCP interface.
+# Install this in the SAME Python environment that runs auto_trainer_v3.py.
+mcp>=1.9,<2

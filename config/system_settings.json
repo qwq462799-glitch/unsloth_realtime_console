@@ -1,0 +1,34 @@
+{
+  "model_name": {
+    "value": "unsloth/Qwen2.5-3B-Instruct",
+    "enabled": true
+  },
+  "max_seq_length": {
+    "value": 1024,
+    "enabled": true
+  },
+  "buffer_threshold": {
+    "value": 50,
+    "enabled": true
+  },
+  "max_adapters": {
+    "value": 5,
+    "enabled": true
+  },
+  "db_poll_interval": {
+    "value": 300,
+    "enabled": true
+  },
+  "base_data_path": {
+    "value": "E:\\unsloth_realtime_console\\data",
+    "enabled": true
+  },
+  "max_steps": {
+    "value": 50,
+    "enabled": true
+  },
+  "training_backend": {
+    "value": "local",
+    "enabled": true
+  }
+}
