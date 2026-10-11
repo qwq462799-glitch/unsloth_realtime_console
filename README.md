@@ -1,4 +1,4 @@
-# Unsloth 实时训练调度台（审计修复版）
+# Unsloth 实时训练调度台
 
 此项目由 Flask Web UI + 数据采集/去重 + Unsloth/TRL SFT 微调组成。默认仅监听 `127.0.0.1:5000`，适合本机访问。
 
